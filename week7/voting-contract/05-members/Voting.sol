@@ -1,85 +1,70 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-error Voting__NotAMember();
-
 contract Voting {
+    enum VoteStates {Absent, Yes, No}
+    uint constant VOTE_THRESHOLD = 10;
+
     struct Proposal {
         address target;
         bytes data;
+        bool executed;
         uint yesCount;
         uint noCount;
+        mapping (address => VoteStates) voteStates;
     }
-    
+
     Proposal[] public proposals;
 
-    mapping(uint => bool) private proposalIdToVoteStatus;
-    
-    address[] private members;
+    event ProposalCreated(uint);
+    event VoteCast(uint, address indexed);
 
-    event ProposalCreated(uint indexed proposalId);
-    event VoteCast(uint indexed proposalId, address indexed voter);
+    mapping(address => bool) members;
 
     constructor(address[] memory _members) {
-        members = _members;
-        members.push(msg.sender);
+        for(uint i = 0; i < _members.length; i++) {
+            members[_members[i]] = true;
+        }
+        members[msg.sender] = true;
     }
 
-
-    function newProposal(address target, bytes memory data) external {
-        if(!isMember(msg.sender)) {
-            revert Voting__NotAMember();
-        }
-        proposals.push(Proposal(target, data, 0 , 0));
-        emit ProposalCreated(proposals.length - 1);
+    function newProposal(address _target, bytes calldata _data) external {
+        require(members[msg.sender]);
+        emit ProposalCreated(proposals.length);
+        Proposal storage proposal = proposals.push();
+        proposal.target = _target;
+        proposal.data = _data;
     }
 
-    function castVote(uint proposalId, bool status) external {
-        if(!isMember(msg.sender)) {
-            revert Voting__NotAMember();
+    function castVote(uint _proposalId, bool _supports) external {
+        require(members[msg.sender]);
+        Proposal storage proposal = proposals[_proposalId];
+
+        // clear out previous vote
+        if(proposal.voteStates[msg.sender] == VoteStates.Yes) {
+            proposal.yesCount--;
+        }
+        if(proposal.voteStates[msg.sender] == VoteStates.No) {
+            proposal.noCount--;
         }
 
-        Proposal storage proposal = proposals[proposalId];
-
-        // * check whether user cast the vote before?
-        if(proposalIdToVoteStatus[proposalId]) {
-            // * true means casted.
-
-            if(status) {
-                proposal.yesCount++;
-                if(proposal.noCount > 0) {
-                    proposal.noCount--;
-                }
-            } else {
-                proposal.noCount++;
-                if(proposal.yesCount > 0) {
-                    proposal.yesCount--;
-                }
-            }
-        } else {
-            // * false means not casted.
-
-            if(status) {
-                proposal.yesCount++;
-            } else {
-                proposal.noCount++;
-            }
-
-            proposalIdToVoteStatus[proposalId] = true;
+        // add new vote
+        if(_supports) {
+            proposal.yesCount++;
+        }
+        else {
+            proposal.noCount++;
         }
 
-        emit VoteCast(proposalId, msg.sender);
-    }
+        // we're tracking whether or not someone has already voted
+        // and we're keeping track as well of what they voted
+        proposal.voteStates[msg.sender] = _supports ? VoteStates.Yes : VoteStates.No;
 
-    function isMember(address caller) private view returns(bool) {
-        address[] memory membersCopy = members;
+        emit VoteCast(_proposalId, msg.sender);
 
-        for(uint i = 0; i < membersCopy.length; i++) {
-            if(caller == membersCopy[i]) {
-                return true;
-            }
+        if(proposal.yesCount == VOTE_THRESHOLD && !proposal.executed) {
+            (bool success, ) = proposal.target.call(proposal.data);
+            require(success);
         }
-
-        return false;
     }
 }

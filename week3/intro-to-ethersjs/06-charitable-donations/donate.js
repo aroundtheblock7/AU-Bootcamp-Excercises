@@ -11,19 +11,15 @@ const provider = new providers.Web3Provider(ganacheProvider);
  * @returns {Promise} a promise that resolves after all donations have been sent
  */
 async function donate(privateKey, charities) {
+    const oneEther = utils.parseEther("1.0");
     const wallet = new Wallet(privateKey, provider);
-    const value = ethers.utils.parseEther("1");
-
-    for (let i = 0; i < charities.length; i++) {
-        const to = charities[i];
-
+    for(let i = 0; i < charities.length; i++) {
+        const charity = charities[i];
         await wallet.sendTransaction({
-            value,
-            to,
-            gasLimit: 0x5208,
-            gasPrice: 0x3b9aca00,
+            value: oneEther,
+            to: charity
         });
-    }
+    } 
 }
 
 module.exports = donate;

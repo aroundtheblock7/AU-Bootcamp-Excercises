@@ -6,31 +6,24 @@ contract Hackathon {
         string title;
         uint[] ratings;
     }
-
+    
     Project[] projects;
 
-    function findWinner() external view returns (Project memory) {
-        Project[] memory projectsCopy = projects;
-        uint highestRatings = 0;
-        uint highRatedProjectIndex = 0;
-
-        for (uint i = 1; i < projectsCopy.length; i++) {
-            Project memory project = projectsCopy[i];
-
-            uint sum = 0;
-            for (uint j = 0; j < project.ratings.length; j++) {
-                sum += project.ratings[j];
+    function findWinner() external view returns(Project memory) {
+        Project memory topProject; 
+        uint topAverage = 0;
+        for(uint i = 0; i < projects.length; i++) {
+            uint sum;
+            for(uint j = 0; j < projects[i].ratings.length; j++) {
+                sum += projects[i].ratings[j];
             }
-
-            uint average = sum / project.ratings.length;
-
-            if (average > highestRatings) {
-                highestRatings = average;
-                highRatedProjectIndex = i;
+            uint average = sum / projects[i].ratings.length;
+            if(average > topAverage) {
+                topAverage = average;
+                topProject = projects[i];
             }
         }
-
-        return projectsCopy[highRatedProjectIndex];
+        return topProject;
     }
 
     function newProject(string calldata _title) external {

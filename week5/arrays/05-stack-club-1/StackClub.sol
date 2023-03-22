@@ -1,20 +1,29 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity 0.8.4;
 
 contract StackClub {
-    address[] public members;
+	address[] members;
 
-    function addMember(address newMember) external {
-        members.push(newMember);
-    }
+	constructor() {
+		members.push(msg.sender);
+	}
 
-    function isMember(address user) public view returns (bool _isMember) {
-        address[] memory localMembers = members;
+	function isMember(address member) public view returns(bool) {
+		for(uint i = 0; i < members.length; i++) {
+			if(members[i] == member) {
+				return true;
+			}
+		}
+		return false;
+	}
 
-        for (uint i = 0; i < localMembers.length; i++) {
-            if (localMembers[i] == user) {
-                return true;
-            }
-        }
-    }
+	function removeLastMember() external {
+		require(isMember(msg.sender));
+		members.pop();
+	}
+
+	function addMember(address member) external {
+		require(isMember(msg.sender));
+		members.push(member);
+	}
 }

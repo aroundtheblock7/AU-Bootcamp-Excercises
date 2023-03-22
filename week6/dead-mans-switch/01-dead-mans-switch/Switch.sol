@@ -1,37 +1,31 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
-
-error Switch__NotOwner();
-error Switch__StillTimeRemaining();
+pragma solidity 0.8.4;
 
 contract Switch {
-    address private recipient;
-    address private owner;
-    uint private pingTime;
 
-    modifier onlyOwner() {
-        if (msg.sender != owner) {
-            revert Switch__NotOwner();
-        }
+    address public owner;
+    address public recipient;
+    uint public timePinged;
+
+    constructor(address _recipient) payable {
+        recipient = _recipient;
+        owner = msg.sender;
+        timePinged = block.timestamp;
+    }
+
+    modifier onlyOwner {
+        require(msg.sender == owner);
         _;
     }
 
-    constructor(address _recipient) payable {
-        owner = msg.sender;
-        recipient = _recipient;
-        pingTime = block.timestamp;
+    function withdraw() public payable {
+        require((block.timestamp - timePinged) >= 52 weeks);
+        (bool success,) = recipient.call{value: address(this).balance}("");
+        require(success, "Transfer Failed");
     }
 
-    function withdraw() external {
-        if (block.timestamp - pingTime < 52 weeks) {
-            revert Switch__StillTimeRemaining();
-        }
-
-        (bool success, ) = msg.sender.call{value: address(this).balance}("");
-        require(success);
+    function ping() public onlyOwner {
+        timePinged = block.timestamp;
     }
 
-    function ping() external onlyOwner {
-        pingTime = block.timestamp;
-    }
 }

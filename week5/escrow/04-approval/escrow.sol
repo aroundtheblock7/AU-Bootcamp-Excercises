@@ -1,21 +1,26 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity 0.8.4;
 
 contract Escrow {
-    address public depositor;
-    address public beneficiary;
-    address public arbiter;
-    bool public isApproved;
+	address public arbiter;
+	address payable public beneficiary;
+	address public depositor;
 
-    constructor(address _arbiter, address _beneficiary) payable {
-        depositor = msg.sender;
-        beneficiary = _beneficiary;
-        arbiter = _arbiter;
-    }
+	bool public isApproved;
 
-    function approve() external {
-        isApproved = true;
-        (bool success, ) = beneficiary.call{value: address(this).balance}("");
-        require(success);
-    }
+	constructor(address _arbiter, address payable _beneficiary) payable {
+		arbiter = _arbiter;
+		beneficiary = _beneficiary;
+		depositor = msg.sender;
+	}
+
+	event Approved(uint balance);
+
+	function approve() external {
+		uint balance = address(this).balance;
+		(bool sent, ) = beneficiary.call{ value: balance }("");
+		require(sent, "Failed to send Ether");
+		emit Approved(balance);
+		isApproved = true;
+	}
 }
